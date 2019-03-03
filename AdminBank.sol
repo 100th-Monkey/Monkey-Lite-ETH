@@ -55,11 +55,13 @@ contract AdminBank {
 	address public mainContract;
 	bool public mainContractSet = false;
 
-	address public teamMemberA = THiB7NdXDNaVVFBDwvsQNpxfDCG2HGRNvF; 
-	address public teamMemberB = TMHWmHeYaMyeP4E9j4hbCvveE2tF5hWNre; 
+	address public teamMemberA = 0x2597afE84661669E590016E51f8FB0059D1Ad63e; 
+	address public teamMemberB = 0x; 
+	address public teamMemberC = 0x; 
 	
-	uint256 public teamMemberArate = 50; //50%
-	uint256 public teamMemberBrate = 50; //50%
+	uint256 public teamMemberArate = 40; //40%
+	uint256 public teamMemberBrate = 40; //40%
+	uint256 public teamMemberCrate = 20; //20%
 
 
 	mapping (address => uint256) public teamMemberTotal;
@@ -76,6 +78,7 @@ contract AdminBank {
 		masterAdmin = msg.sender;
 		validTeamMember[teamMemberA] = true;
 		validTeamMember[teamMemberB] = true;
+		validTeamMember[teamMemberC] = true;
 		
 	}
 
@@ -151,6 +154,9 @@ contract AdminBank {
 		} else if (msg.sender == teamMemberB) {
 			user = teamMemberB;
 			rate = teamMemberBrate;
+		} else if (msg.sender == teamMemberC) {
+			user = teamMemberC;
+			rate = teamMemberCrate;
 		}
 		
 		//update accounting 
@@ -178,6 +184,8 @@ contract AdminBank {
 			proposingAddressIndex[_new] = 0;
 		} else if (msg.sender == teamMemberB) {
 			proposingAddressIndex[_new] = 1;
+		} else if (msg.sender == teamMemberC) {
+			proposingAddressIndex[_new] = 2;
 		} 
 
 		emit addressChangeProposed(msg.sender, _new);
@@ -213,6 +221,12 @@ contract AdminBank {
 			isProposing[old] = false;
 			teamMemberB = msg.sender;
 			validTeamMember[teamMemberB] = true;
+		} else if (proposingAddressIndex[msg.sender] == 2) {
+			old = teamMemberC;
+			validTeamMember[old] = false;
+			isProposing[old] = false;
+			teamMemberB = msg.sender;
+			validTeamMember[teamMemberC] = true;
 		} 
 		isProposedAddress[msg.sender] = false;
 
@@ -230,6 +244,9 @@ contract AdminBank {
 		} else if (_user == teamMemberB) {
 			user = teamMemberB;
 			rate = teamMemberBrate;
+		} else if (_user == teamMemberC) {
+			user = teamMemberC;
+			rate = teamMemberCrate;
 		} 
 		{
 			return 0;

@@ -1,4 +1,4 @@
-/*  TRON VERSION JANUARY 2019
+/*  ETH LITE VERSION MARCH 2019
  ____   _______  _______  _______  __   __    __   __  _______  __    _  ___   _  _______  __   __
 |    | |  _    ||  _    ||       ||  | |  |  |  |_|  ||       ||  |  | ||   | | ||       ||  | |  |
  |   | | | |   || | |   ||_     _||  |_|  |  |       ||   _   ||   |_| ||   |_| ||    ___||  |_|  |
@@ -122,9 +122,9 @@ contract OneHundredthMonkey {
     address public cyclePrizeWinner;
 
     //TOKEN TRACKING
-    uint256 public tokenPrice = 100 tron;
-    uint256 public tokenPriceIncrement = 5 tron;
-    uint256 public minTokensPerRound = 2000; //between 1x and 2x this amount of tokens generated each minigame
+    uint256 public tokenPrice = 0.02 ETH;
+    uint256 public tokenPriceIncrement = 0.0005 ETH;
+    uint256 public minTokensPerRound = 1000; //between 1x and 2x this amount of tokens generated each minigame
 
     //USER TRACKING PUBLIC
     address[] public uniqueAddress;
@@ -530,20 +530,20 @@ contract OneHundredthMonkey {
 
         //assign tokens
         uint256 tokensPurchased;
-        uint256 tronSpent = _amount;
+        uint256 ethSpent = _amount;
         uint256 valueOfRemainingTokens = roundTokensLeft[roundCount].mul(tokenPrice);
 
         //if round tokens are all sold, push difference to user balance and call generateSeedA
-        if (tronSpent >= valueOfRemainingTokens) {
-            uint256 incomingValue = tronSpent;
-            tronSpent = valueOfRemainingTokens;
+        if (ethSpent >= valueOfRemainingTokens) {
+            uint256 incomingValue = ethSpent;
+            ethSpent = valueOfRemainingTokens;
             tokensPurchased = roundTokensLeft[roundCount];
             roundTokensLeft[roundCount] = 0;
-            uint256 tronCredit = incomingValue.sub(tronSpent);
-            userBalance[msg.sender] += tronCredit;
+            uint256 ethCredit = incomingValue.sub(ethSpent);
+            userBalance[msg.sender] += ethCredit;
             generateSeedA();
         } else {
-            tokensPurchased = tronSpent.div(tokenPrice);
+            tokensPurchased = ethSpent.div(tokenPrice);
         }
 
         //update user token accounting
@@ -556,19 +556,19 @@ contract OneHundredthMonkey {
         userLastRoundInteractedWith[msg.sender] = roundCount;
 
         //divide amount by various percentages and distribute
-        uint256 adminShare = tronSpent.mul(adminFeeRate).div(100);
+        uint256 adminShare = ethSpent.mul(adminFeeRate).div(100);
         adminBalance += adminShare;
 
-        uint256 roundRewardShare = tronSpent.mul(roundRewardRate).div(100);
+        uint256 roundRewardShare = ethSpent.mul(roundRewardRate).div(100);
         roundRewards[roundCount] += roundRewardShare;
 
-        uint256 roundPrize = tronSpent.mul(roundPotRate).div(100);
+        uint256 roundPrize = ethSpent.mul(roundPotRate).div(100);
         roundPrizePot[roundCount] += roundPrize;
 
-        uint256 roundAirdrop = tronSpent.mul(roundAirdropRate).div(100);
+        uint256 roundAirdrop = ethSpent.mul(roundAirdropRate).div(100);
         roundAirdropPot[roundCount] += roundAirdrop;
 
-        uint256 cyclePot = tronSpent.mul(progressivePotRate).div(100);
+        uint256 cyclePot = ethSpent.mul(progressivePotRate).div(100);
         cycleProgressivePot += cyclePot;
 
         //update global token accounting
@@ -578,7 +578,7 @@ contract OneHundredthMonkey {
         cycleActiveTokens += tokensPurchased;
         roundTokensActive[roundCount] += tokensPurchased;
         roundTokensActive[roundCount] += tokensPurchased;
-        totalVolume += tronSpent;
+        totalVolume += ethSpent;
         totalBuys++;
 
         //update user balance, if necessary. done here to keep ensure updateUserBalance never has to search through multiple rounds

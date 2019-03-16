@@ -15,6 +15,7 @@ contract Round is Ownable {
     mapping(uint256 => Range) public ranges;
     mapping(address => uint256) public balances;
     uint256 public totalBalance;
+    uint256 public revealBlockNumber;
     
     event RangeAdded(uint256 begin, uint256 length, address indexed user);
 
@@ -29,7 +30,12 @@ contract Round is Ownable {
         emit RangeAdded(begin, totalBalance, user);
     }
 
+    function finish() public onlyOwner {
+        revealBlockNumber = block.number + 1;
+    }
+
     function award(uint256 offset, uint256 begin) public onlyOwner {
+        require(block.number > revealBlockNumber);
         require(begin <= offset && offset < ranges[begin].end);
         selfdestruct(ranges[begin].user);
     }

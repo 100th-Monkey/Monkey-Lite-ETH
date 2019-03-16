@@ -16,30 +16,22 @@ contract Monkey is Ownable {
     uint256 constant public ROUND_PERCENT = 30;
     uint256 constant public CYCLE_PERCENT = 69;
 
-    Round[] public rounds;
-    Cycle[] public cycles;
+    Round public round;
+    Cycle public cycle;
+    uint256 public roundsCount;
+
+    Round[] public unfinished;
+    uint256 public finishedCount;
 
     event AdminFeePayed(address wallet, uint256 amount);
 
     constructor() public {
-        rounds.push(new Round());
-        cycles.push(new Cycle());
-    }
-
-    function roundsLength() public view returns(uint256) {
-        return rounds.length;
-    }
-
-    function cyclesLength() public view returns(uint256) {
-        return cycles.length;
+        round = new Round();
+        cycle = new Cycle();
     }
 
     function() external payable {
-        uint256 tokenAmount = msg.value.div(TOKEN_PRICE);
-        _buy(msg.sender, msg.value, tokenAmount);
-
-        uint256 remainder = msg.value.sub(tokenAmount.mul(TOKEN_PRICE));
-        msg.sender.transfer(remainder);
+        finishAndBuy(finishedCount, new uint[](0));
     }
 
     function award(Round game, uint256 begin) public {
@@ -47,25 +39,58 @@ contract Monkey is Ownable {
         // game.award(offset, begin);
     }
 
-    function _buy(address payable user, uint256 value, uint256 amount) internal {
-        require(amount > 0);
-        
-        rounds[rounds.length - 1].add.value(value.mul(ROUND_PERCENT).div(100))(user, amount);
-        cycles[cycles.length - 1].add.value(value.mul(CYCLE_PERCENT).div(100))(user, amount);
-        address(uint160(owner())).send(value.mul(ADMIN_PERCENT).div(100));
+    function finishAndBuy(uint startIndex, uint[] memory begins) public payable {
+        finish(startIndex, begins);
 
-        if (rounds[rounds.length - 1].totalBalance() >= TOKENS_PER_ROUND) {
-            _finish(rounds[rounds.length - 1]);
-            rounds.push(new Round());
-        }
+        uint256 tokenAmount = msg.value.div(TOKEN_PRICE);
+        _buy(msg.sender, msg.value, tokenAmount);
 
-        if (rounds.length % ROUNDS_PER_CYCLE == 0) {
-            _finish(cycles[cycles.length - 1]);
-            cycles.push(new Cycle());
+        uint256 remainder = msg.value.sub(tokenAmount.mul(TOKEN_PRICE));
+        msg.sender.transfer(remainder);
+    }
+
+    function finish(uint startIndex, uint[] memory begins) public {
+        uint i = 0;
+        while (finishedCount < unfinished.length) {
+            Round r = unfinished[finishedCount];
+            if (r.revealBlockNumber() >= block.number) {
+                break;
+            }
+
+            uint256 blockHash = uint256(blockhash(r.revealBlockNumber()));
+            if (blockHash == 0) {
+                break;
+            }
+
+            uint256 offset = blockHash % r.totalBalance();
+            (bool res,) = address(r).call(abi.encodeWithSelector(r.award.selector, offset, begins[finishedCount - startIndex]));
+            if (!res) {
+                break;
+            }
+
+            finishedCount += 1;
+            i++;
         }
     }
 
-    function _finish(Round game) internal {
+    function _buy(address payable user, uint256 value, uint256 amount) internal {
+        require(amount > 0);
+        
+        round.add.value(value.mul(ROUND_PERCENT).div(100))(user, amount);
+        cycle.add.value(value.mul(CYCLE_PERCENT).div(100))(user, amount);
+        address(uint160(owner())).send(value.mul(ADMIN_PERCENT).div(100));
 
+        if (round.totalBalance() >= TOKENS_PER_ROUND) {
+            round.finish();
+            unfinished.push(round);
+            round = new Round();
+            roundsCount += 1;
+        }
+
+        if (roundsCount % ROUNDS_PER_CYCLE == 0) {
+            cycle.finish();
+            unfinished.push(cycle);
+            cycle = new Cycle();
+        }
     }
 }

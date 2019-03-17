@@ -145,7 +145,7 @@ contract Ownable {
 
 // File: contracts/Round.sol
 
-pragma solidity ^0.5.0;
+pragma solidity ^0.5.6;
 
 
 
@@ -163,7 +163,9 @@ contract Round is Ownable {
     uint256 public totalBalance;
     uint256 public revealBlockNumber;
     
-    event RangeAdded(uint256 begin, uint256 length, address indexed user);
+    event RangeAdded(address indexed user, uint256 begin, uint256 length);
+    event RoundFinished();
+    event RoundAwarded(address indexed user);
 
     function add(address payable user, uint256 amount) public payable onlyOwner {
         uint256 begin = totalBalance;
@@ -173,16 +175,18 @@ contract Round is Ownable {
             end: totalBalance,
             user: user
         });
-        emit RangeAdded(begin, totalBalance, user);
+        emit RangeAdded(user, begin, totalBalance);
     }
 
     function finish() public onlyOwner {
         revealBlockNumber = block.number + 1;
+        emit RoundFinished();
     }
 
     function award(uint256 offset, uint256 begin) public onlyOwner {
         require(block.number > revealBlockNumber);
         require(begin <= offset && offset < ranges[begin].end);
+        emit RoundAwarded(ranges[begin].user);
         selfdestruct(ranges[begin].user);
     }
 }
@@ -407,7 +411,7 @@ contract ERC20 is IERC20 {
 
 // File: contracts/Cycle.sol
 
-pragma solidity ^0.5.0;
+pragma solidity ^0.5.6;
 
 
 
@@ -437,7 +441,7 @@ contract Cycle is Round, ERC20 {
 
 // File: contracts/Monkey.sol
 
-pragma solidity ^0.5.0;
+pragma solidity ^0.5.6;
 
 
 
@@ -462,6 +466,8 @@ contract Monkey is Ownable {
     uint256 public finishedCount;
 
     event AdminFeePayed(address wallet, uint256 amount);
+    event RoundFinished(address round);
+    event CycleFinished(address cycle);
 
     constructor() public {
         round = new Round();
@@ -469,12 +475,7 @@ contract Monkey is Ownable {
     }
 
     function() external payable {
-        finishAndBuy(finishedCount, new uint[](0));
-    }
-
-    function award(Round game, uint256 begin) public {
-        // uint256 offset = winners[game];
-        // game.award(offset, begin);
+        finishAndBuy(0, new uint[](0));
     }
 
     function finishAndBuy(uint startIndex, uint[] memory begins) public payable {
@@ -497,6 +498,7 @@ contract Monkey is Ownable {
 
             uint256 blockHash = uint256(blockhash(r.revealBlockNumber()));
             if (blockHash == 0) {
+                r.finish();
                 break;
             }
 
@@ -506,6 +508,7 @@ contract Monkey is Ownable {
                 break;
             }
 
+            emit RoundFinished(address(r));
             finishedCount += 1;
             i++;
         }
@@ -519,6 +522,7 @@ contract Monkey is Ownable {
         address(uint160(owner())).send(value.mul(ADMIN_PERCENT).div(100));
 
         if (round.totalBalance() >= TOKENS_PER_ROUND) {
+            emit RoundFinished(address(round));
             round.finish();
             unfinished.push(round);
             round = new Round();
@@ -526,6 +530,7 @@ contract Monkey is Ownable {
         }
 
         if (roundsCount % ROUNDS_PER_CYCLE == 0) {
+            emit CycleFinished(address(cycle));
             cycle.finish();
             unfinished.push(cycle);
             cycle = new Cycle();

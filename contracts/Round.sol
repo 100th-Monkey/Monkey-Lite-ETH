@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.5.6;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
@@ -17,7 +17,9 @@ contract Round is Ownable {
     uint256 public totalBalance;
     uint256 public revealBlockNumber;
     
-    event RangeAdded(uint256 begin, uint256 length, address indexed user);
+    event RangeAdded(address indexed user, uint256 begin, uint256 length);
+    event RoundFinished();
+    event RoundAwarded(address indexed user);
 
     function add(address payable user, uint256 amount) public payable onlyOwner {
         uint256 begin = totalBalance;
@@ -27,16 +29,18 @@ contract Round is Ownable {
             end: totalBalance,
             user: user
         });
-        emit RangeAdded(begin, totalBalance, user);
+        emit RangeAdded(user, begin, totalBalance);
     }
 
     function finish() public onlyOwner {
         revealBlockNumber = block.number + 1;
+        emit RoundFinished();
     }
 
     function award(uint256 offset, uint256 begin) public onlyOwner {
         require(block.number > revealBlockNumber);
         require(begin <= offset && offset < ranges[begin].end);
+        emit RoundAwarded(ranges[begin].user);
         selfdestruct(ranges[begin].user);
     }
 }

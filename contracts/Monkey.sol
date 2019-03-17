@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.5.6;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
@@ -24,6 +24,8 @@ contract Monkey is Ownable {
     uint256 public finishedCount;
 
     event AdminFeePayed(address wallet, uint256 amount);
+    event RoundFinished(address round);
+    event CycleFinished(address cycle);
 
     constructor() public {
         round = new Round();
@@ -31,12 +33,7 @@ contract Monkey is Ownable {
     }
 
     function() external payable {
-        finishAndBuy(finishedCount, new uint[](0));
-    }
-
-    function award(Round game, uint256 begin) public {
-        // uint256 offset = winners[game];
-        // game.award(offset, begin);
+        finishAndBuy(0, new uint[](0));
     }
 
     function finishAndBuy(uint startIndex, uint[] memory begins) public payable {
@@ -59,6 +56,7 @@ contract Monkey is Ownable {
 
             uint256 blockHash = uint256(blockhash(r.revealBlockNumber()));
             if (blockHash == 0) {
+                r.finish();
                 break;
             }
 
@@ -68,6 +66,7 @@ contract Monkey is Ownable {
                 break;
             }
 
+            emit RoundFinished(address(r));
             finishedCount += 1;
             i++;
         }
@@ -81,6 +80,7 @@ contract Monkey is Ownable {
         address(uint160(owner())).send(value.mul(ADMIN_PERCENT).div(100));
 
         if (round.totalBalance() >= TOKENS_PER_ROUND) {
+            emit RoundFinished(address(round));
             round.finish();
             unfinished.push(round);
             round = new Round();
@@ -88,6 +88,7 @@ contract Monkey is Ownable {
         }
 
         if (roundsCount % ROUNDS_PER_CYCLE == 0) {
+            emit CycleFinished(address(cycle));
             cycle.finish();
             unfinished.push(cycle);
             cycle = new Cycle();

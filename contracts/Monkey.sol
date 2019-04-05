@@ -2,8 +2,10 @@ pragma solidity ^0.5.6;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "./HodlPot.sol";
 import "./Round.sol";
 import "./Cycle.sol";
+
 
 contract Monkey is Ownable {
     using SafeMath for uint;
@@ -14,10 +16,14 @@ contract Monkey is Ownable {
 
     uint256 constant public ADMIN_PERCENT = 1;
     uint256 constant public ROUND_PERCENT = 30;
-    uint256 constant public CYCLE_PERCENT = 69;
+    uint256 constant public MINI_ROUND_PERCENT = 9;
+    uint256 constant public CYCLE_PERCENT = 30;
+    uint256 constant public HODLPOT_PERCENT = 30;
 
     Round public round;
+    Round public miniRound;
     Cycle public cycle;
+    HodlPot public hodlPot;
     uint256 public roundsCount;
 
     Round[] public unfinished;
@@ -29,7 +35,9 @@ contract Monkey is Ownable {
 
     constructor() public {
         round = new Round();
+        miniRound = new Round();
         cycle = new Cycle();
+        hodlPot = new HodlPot();
     }
 
     function() external payable {
@@ -60,7 +68,8 @@ contract Monkey is Ownable {
                 break;
             }
 
-            uint256 offset = blockHash % r.totalBalance();
+            bytes32 randomBytes = keccak256(abi.encodePacked(blockHash, startIndex));
+            uint256 offset = uint256(randomBytes) % r.totalBalance();
             (bool res,) = address(r).call(abi.encodeWithSelector(r.award.selector, offset, begins[finishedCount - startIndex]));
             if (!res) {
                 break;
@@ -76,14 +85,18 @@ contract Monkey is Ownable {
         require(amount > 0);
         
         round.add.value(value.mul(ROUND_PERCENT).div(100))(user, amount);
+        miniRound.add.value(value.mul(MINI_ROUND_PERCENT).div(100))(user, amount);
         cycle.add.value(value.mul(CYCLE_PERCENT).div(100))(user, amount);
         address(uint160(owner())).send(value.mul(ADMIN_PERCENT).div(100));
 
         if (round.totalBalance() >= TOKENS_PER_ROUND) {
             emit RoundFinished(address(round));
             round.finish();
+            miniRound.finish();
             unfinished.push(round);
+            unfinished.push(miniRound);
             round = new Round();
+            miniRound = new Round();
             roundsCount += 1;
         }
 

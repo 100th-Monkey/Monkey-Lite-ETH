@@ -143,6 +143,54 @@ contract Ownable {
     }
 }
 
+// File: contracts/HodlPot.sol
+
+pragma solidity ^0.5.6;
+
+
+
+
+contract HodlPot is Ownable {
+    using SafeMath for uint256;
+
+    uint256 constant public percentsRemaining = 50;
+    mapping(address => uint256) public shares;
+    uint256 public totalShares;
+    bool public finished;
+
+    function put(address payable user) public payable onlyOwner {
+        uint256 amount = msg.value;
+        if (totalShares > 0) {
+            amount = msg.value.mul(totalShares).div(address(this).balance.sub(msg.value));
+        }
+        shares[user] = shares[user].add(amount);
+        totalShares = totalShares.add(amount);
+    }
+
+    function get(address payable user) public onlyOwner {
+        require(finished);
+
+        uint256 amount = balanceOf(user);
+        totalShares = totalShares.sub(shares[user]);
+        shares[user] = 0;
+        user.transfer(amount);
+        if (totalShares == 0) {
+            selfdestruct(user);
+        }
+    }
+
+    function finish() public onlyOwner {
+        finished = true;
+    }
+
+    function balanceOf(address _account) public view returns(uint256) {
+        if (totalShares == 0) {
+            return 0;
+        }
+        return address(this).balance.mul(shares[_account]).mul(percentsRemaining).div(totalShares).div(100);
+    }
+}
+
 // File: contracts/Round.sol
 
 pragma solidity ^0.5.6;
@@ -447,6 +495,8 @@ pragma solidity ^0.5.6;
 
 
 
+
+
 contract Monkey is Ownable {
     using SafeMath for uint;
 
@@ -456,10 +506,14 @@ contract Monkey is Ownable {
 
     uint256 constant public ADMIN_PERCENT = 1;
     uint256 constant public ROUND_PERCENT = 30;
-    uint256 constant public CYCLE_PERCENT = 69;
+    uint256 constant public MINI_ROUND_PERCENT = 9;
+    uint256 constant public CYCLE_PERCENT = 30;
+    uint256 constant public HODLPOT_PERCENT = 30;
 
     Round public round;
+    Round public miniRound;
     Cycle public cycle;
+    HodlPot public hodlPot;
     uint256 public roundsCount;
 
     Round[] public unfinished;
@@ -471,7 +525,9 @@ contract Monkey is Ownable {
 
     constructor() public {
         round = new Round();
+        miniRound = new Round();
         cycle = new Cycle();
+        hodlPot = new HodlPot();
     }
 
     function() external payable {
@@ -502,7 +558,8 @@ contract Monkey is Ownable {
                 break;
             }
 
-            uint256 offset = blockHash % r.totalBalance();
+            bytes32 randomBytes = keccak256(abi.encodePacked(blockHash, startIndex));
+            uint256 offset = uint256(randomBytes) % r.totalBalance();
             (bool res,) = address(r).call(abi.encodeWithSelector(r.award.selector, offset, begins[finishedCount - startIndex]));
             if (!res) {
                 break;
@@ -518,14 +575,18 @@ contract Monkey is Ownable {
         require(amount > 0);
         
         round.add.value(value.mul(ROUND_PERCENT).div(100))(user, amount);
+        miniRound.add.value(value.mul(MINI_ROUND_PERCENT).div(100))(user, amount);
         cycle.add.value(value.mul(CYCLE_PERCENT).div(100))(user, amount);
         address(uint160(owner())).send(value.mul(ADMIN_PERCENT).div(100));
 
         if (round.totalBalance() >= TOKENS_PER_ROUND) {
             emit RoundFinished(address(round));
             round.finish();
+            miniRound.finish();
             unfinished.push(round);
+            unfinished.push(miniRound);
             round = new Round();
+            miniRound = new Round();
             roundsCount += 1;
         }
 

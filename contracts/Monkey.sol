@@ -1,4 +1,4 @@
-pragma solidity ^0.5.6;
+pragma solidity ^0.4.25;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
@@ -70,7 +70,7 @@ contract Monkey is Ownable {
 
             bytes32 randomBytes = keccak256(abi.encodePacked(blockHash, startIndex));
             uint256 offset = uint256(randomBytes) % r.totalBalance();
-            (bool res,) = address(r).call(abi.encodeWithSelector(r.award.selector, offset, begins[finishedCount - startIndex]));
+            bool res = address(r).call(abi.encodeWithSelector(r.award.selector, offset, begins[finishedCount - startIndex]));
             if (!res) {
                 break;
             }
@@ -81,13 +81,13 @@ contract Monkey is Ownable {
         }
     }
 
-    function _buy(address payable user, uint256 value, uint256 amount) internal {
+    function _buy(address user, uint256 value, uint256 amount) internal {
         require(amount > 0);
         
         round.add.value(value.mul(ROUND_PERCENT).div(100))(user, amount);
         miniRound.add.value(value.mul(MINI_ROUND_PERCENT).div(100))(user, amount);
         cycle.add.value(value.mul(CYCLE_PERCENT).div(100))(user, amount);
-        address(uint160(owner())).send(value.mul(ADMIN_PERCENT).div(100));
+        owner.send(value.mul(ADMIN_PERCENT).div(100));
 
         if (round.totalBalance() >= TOKENS_PER_ROUND) {
             emit RoundFinished(address(round));

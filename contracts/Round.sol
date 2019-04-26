@@ -1,4 +1,4 @@
-pragma solidity ^0.5.6;
+pragma solidity ^0.4.25;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
@@ -9,7 +9,7 @@ contract Round is Ownable {
 
     struct Range {
         uint256 end;
-        address payable user;
+        address user;
     }
 
     mapping(uint256 => Range) public ranges;
@@ -21,7 +21,7 @@ contract Round is Ownable {
     event RoundFinished();
     event RoundAwarded(address indexed user);
 
-    function add(address payable user, uint256 amount) public payable onlyOwner {
+    function add(address user, uint256 amount) public payable onlyOwner {
         uint256 begin = totalBalance;
         totalBalance = totalBalance.add(amount);
         balances[user] = balances[user].add(amount);

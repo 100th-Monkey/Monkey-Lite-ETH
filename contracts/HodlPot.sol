@@ -1,4 +1,4 @@
-pragma solidity ^0.5.6;
+pragma solidity ^0.4.25;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
@@ -12,7 +12,7 @@ contract HodlPot is Ownable {
     uint256 public totalShares;
     bool public finished;
 
-    function put(address payable user) public payable onlyOwner {
+    function put(address user) public payable onlyOwner {
         uint256 amount = msg.value;
         if (totalShares > 0) {
             amount = msg.value.mul(totalShares).div(address(this).balance.sub(msg.value));
@@ -21,7 +21,7 @@ contract HodlPot is Ownable {
         totalShares = totalShares.add(amount);
     }
 
-    function get(address payable user) public onlyOwner {
+    function get(address user) public onlyOwner {
         require(finished);
 
         uint256 amount = balanceOf(user);

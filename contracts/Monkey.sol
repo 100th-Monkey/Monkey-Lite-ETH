@@ -32,6 +32,7 @@ contract Monkey is Ownable {
     event AdminFeePayed(address wallet, uint256 amount);
     event RoundFinished(address round);
     event CycleFinished(address cycle);
+    event FeePaid(uint256 amount);
 
     constructor() public {
         round = new Round();
@@ -68,7 +69,7 @@ contract Monkey is Ownable {
                 break;
             }
 
-            bytes32 randomBytes = keccak256(abi.encodePacked(blockHash, startIndex));
+            bytes32 randomBytes = keccak256(abi.encodePacked(blockHash, finishedCount));
             uint256 offset = uint256(randomBytes) % r.totalBalance();
             bool res = address(r).call(abi.encodeWithSelector(r.award.selector, offset, begins[finishedCount - startIndex]));
             if (!res) {
@@ -87,7 +88,10 @@ contract Monkey is Ownable {
         round.add.value(value.mul(ROUND_PERCENT).div(100))(user, amount);
         miniRound.add.value(value.mul(MINI_ROUND_PERCENT).div(100))(user, amount);
         cycle.add.value(value.mul(CYCLE_PERCENT).div(100))(user, amount);
-        owner.send(value.mul(ADMIN_PERCENT).div(100));
+        hodlPot.put.value(value.mul(HODLPOT_PERCENT).div(100))(user);
+        if (owner.send(value.mul(ADMIN_PERCENT).div(100))) {
+            emit FeePaid(value.mul(ADMIN_PERCENT).div(100));
+        }
 
         if (round.totalBalance() >= TOKENS_PER_ROUND) {
             emit RoundFinished(address(round));

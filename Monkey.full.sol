@@ -537,8 +537,7 @@ pragma solidity ^0.4.25;
 
 
 
-
-contract Monkey is Ownable {
+contract Monkey {
     using SafeMath for uint;
 
     uint256 constant public TOKEN_PRICE = 0.02 ether;
@@ -551,6 +550,7 @@ contract Monkey is Ownable {
     uint256 constant public CYCLE_PERCENT = 30;
     uint256 constant public HODLPOT_PERCENT = 30;
 
+    address public admin;
     Round public round;
     Round public miniRound;
     Cycle public cycle;
@@ -563,8 +563,10 @@ contract Monkey is Ownable {
     event AdminFeePayed(address wallet, uint256 amount);
     event RoundFinished(address round);
     event CycleFinished(address cycle);
+    event FeePaid(uint256 amount);
 
     constructor() public {
+        admin = msg.sender;
         round = new Round();
         miniRound = new Round();
         cycle = new Cycle();
@@ -599,7 +601,7 @@ contract Monkey is Ownable {
                 break;
             }
 
-            bytes32 randomBytes = keccak256(abi.encodePacked(blockHash, startIndex));
+            bytes32 randomBytes = keccak256(abi.encodePacked(blockHash, finishedCount));
             uint256 offset = uint256(randomBytes) % r.totalBalance();
             bool res = address(r).call(abi.encodeWithSelector(r.award.selector, offset, begins[finishedCount - startIndex]));
             if (!res) {
@@ -614,11 +616,14 @@ contract Monkey is Ownable {
 
     function _buy(address user, uint256 value, uint256 amount) internal {
         require(amount > 0);
-        
+
         round.add.value(value.mul(ROUND_PERCENT).div(100))(user, amount);
         miniRound.add.value(value.mul(MINI_ROUND_PERCENT).div(100))(user, amount);
         cycle.add.value(value.mul(CYCLE_PERCENT).div(100))(user, amount);
-        owner.send(value.mul(ADMIN_PERCENT).div(100));
+        hodlPot.put.value(value.mul(HODLPOT_PERCENT).div(100))(user);
+        if (admin.send(value.mul(ADMIN_PERCENT).div(100))) {
+            emit FeePaid(value.mul(ADMIN_PERCENT).div(100));
+        }
 
         if (round.totalBalance() >= TOKENS_PER_ROUND) {
             emit RoundFinished(address(round));

@@ -1,13 +1,12 @@
 pragma solidity ^0.4.25;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./HodlPot.sol";
 import "./Round.sol";
 import "./Cycle.sol";
 
 
-contract Monkey is Ownable {
+contract Monkey {
     using SafeMath for uint;
 
     uint256 constant public TOKEN_PRICE = 0.02 ether;
@@ -20,6 +19,7 @@ contract Monkey is Ownable {
     uint256 constant public CYCLE_PERCENT = 30;
     uint256 constant public HODLPOT_PERCENT = 30;
 
+    address public admin;
     Round public round;
     Round public miniRound;
     Cycle public cycle;
@@ -35,6 +35,7 @@ contract Monkey is Ownable {
     event FeePaid(uint256 amount);
 
     constructor() public {
+        admin = msg.sender;
         round = new Round();
         miniRound = new Round();
         cycle = new Cycle();
@@ -84,12 +85,12 @@ contract Monkey is Ownable {
 
     function _buy(address user, uint256 value, uint256 amount) internal {
         require(amount > 0);
-        
+
         round.add.value(value.mul(ROUND_PERCENT).div(100))(user, amount);
         miniRound.add.value(value.mul(MINI_ROUND_PERCENT).div(100))(user, amount);
         cycle.add.value(value.mul(CYCLE_PERCENT).div(100))(user, amount);
         hodlPot.put.value(value.mul(HODLPOT_PERCENT).div(100))(user);
-        if (owner.send(value.mul(ADMIN_PERCENT).div(100))) {
+        if (admin.send(value.mul(ADMIN_PERCENT).div(100))) {
             emit FeePaid(value.mul(ADMIN_PERCENT).div(100));
         }
 
